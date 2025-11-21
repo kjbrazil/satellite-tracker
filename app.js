@@ -4,6 +4,7 @@ let userLocation = null;
 let satellites = [];
 let updateInterval = null;
 let tleInterval = null;
+let compassHeading = 0; // Device compass heading in degrees
 
 // Minimum elevation angle for usable satellite connection (degrees)
 // Starlink uses 25° minimum for reliable service
@@ -49,7 +50,7 @@ function getCompassDirection(azimuth) {
 }
 
 // Render sky map visualization
-function renderSkyMap(visibleSatellites) {
+function renderSkyMap(visibleSatellites, heading = 0) {
     if (visibleSatellites.length === 0) return '';
     
     const size = 300;
@@ -58,21 +59,23 @@ function renderSkyMap(visibleSatellites) {
     
     let svg = `
         <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width: 100%; height: auto;">
-            <!-- Background -->
-            <circle cx="${center}" cy="${center}" r="${radius}" fill="#0a0e1a" stroke="#2c3e50" stroke-width="2"/>
-            
-            <!-- Elevation rings -->
-            <circle cx="${center}" cy="${center}" r="${radius * 0.33}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
-            <circle cx="${center}" cy="${center}" r="${radius * 0.67}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
-            
-            <!-- Compass directions -->
-            <text x="${center}" y="15" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">N</text>
-            <text x="${size - 10}" y="${center + 5}" text-anchor="end" fill="#64b5f6" font-size="14" font-weight="bold">E</text>
-            <text x="${center}" y="${size - 5}" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">S</text>
-            <text x="10" y="${center + 5}" text-anchor="start" fill="#64b5f6" font-size="14" font-weight="bold">W</text>
-            
-            <!-- Center dot (zenith) -->
-            <circle cx="${center}" cy="${center}" r="3" fill="#64b5f6" opacity="0.5"/>
+            <!-- Rotate entire map based on device heading so North points to actual north -->
+            <g transform="rotate(${-heading} ${center} ${center})">
+                <!-- Background -->
+                <circle cx="${center}" cy="${center}" r="${radius}" fill="#0a0e1a" stroke="#2c3e50" stroke-width="2"/>
+                
+                <!-- Elevation rings -->
+                <circle cx="${center}" cy="${center}" r="${radius * 0.33}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
+                <circle cx="${center}" cy="${center}" r="${radius * 0.67}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
+                
+                <!-- Compass directions -->
+                <text x="${center}" y="15" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">N</text>
+                <text x="${size - 10}" y="${center + 5}" text-anchor="end" fill="#64b5f6" font-size="14" font-weight="bold">E</text>
+                <text x="${center}" y="${size - 5}" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">S</text>
+                <text x="10" y="${center + 5}" text-anchor="start" fill="#64b5f6" font-size="14" font-weight="bold">W</text>
+                
+                <!-- Center dot (zenith) -->
+                <circle cx="${center}" cy="${center}" r="3" fill="#64b5f6" opacity="0.5"/>
     `;
     
     // Plot satellites
@@ -104,7 +107,9 @@ function renderSkyMap(visibleSatellites) {
         `;
     });
     
-    svg += '</svg>';
+    svg += `
+            </g>
+        </svg>`;
     
     return svg;
 }
@@ -279,10 +284,11 @@ function renderApp(visibleSatellites, nextPasses) {
                 <h2 class="section-title">Currently Overhead (${visibleSatellites.length})</h2>
                 
                 <div style="text-align: center; margin-bottom: 20px;">
-                    ${renderSkyMap(visibleSatellites)}
+                    ${renderSkyMap(visibleSatellites, compassHeading)}
                     <p class="small-text" style="margin-top: 10px;">
                         Sky map: Center = directly overhead, Edge = horizon<br>
-                        🟢 High elevation • 🟡 Medium • 🟠 Low
+                        🟢 High elevation • 🟡 Medium • 🟠 Low<br>
+                        ${compassHeading !== 0 ? 'Compass enabled - map rotates with your device' : 'Turn phone to enable compass'}
                     </p>
                 </div>
                 
@@ -411,3 +417,60 @@ async function init() {
 
 // Start the application when the page loads
 init();
+
+// Setup device compass/orientation
+function setupCompass() {
+    if (!window.DeviceOrientationEvent) {
+        console.log('Device orientation not supported');
+        return;
+    }
+    
+    // iOS 13+ requires permission
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        // Create a button to request permission (iOS requirement)
+        const requestButton = document.createElement('button');
+        requestButton.textContent = 'Enable Compass';
+        requestButton.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000; padding: 10px 20px; background: #1976d2; color: white; border: none; border-radius: 8px; font-size: 14px;';
+        requestButton.onclick = async () => {
+            try {
+                const permission = await DeviceOrientationEvent.requestPermission();
+                if (permission === 'granted') {
+                    startCompass();
+                    requestButton.remove();
+                }
+            } catch (error) {
+                console.error('Error requesting device orientation permission:', error);
+            }
+        };
+        document.body.appendChild(requestButton);
+    } else {
+        // Non-iOS or older iOS - just start listening
+        startCompass();
+    }
+}
+
+function startCompass() {
+    // Use deviceorientationabsolute if available (provides true north)
+    // Otherwise fall back to deviceorientation (magnetic north)
+    const eventType = 'ondeviceorientationabsolute' in window ? 'deviceorientationabsolute' : 'deviceorientation';
+    
+    window.addEventListener(eventType, (event) => {
+        // Alpha is the compass heading (0-360 degrees)
+        // 0/360 = North, 90 = East, 180 = South, 270 = West
+        if (event.alpha !== null) {
+            // On Android, alpha is already compass heading
+            // On iOS with absolute, alpha is true north
+            compassHeading = Math.round(event.alpha);
+            
+            // Trigger a re-render if satellites are visible
+            if (satellites.length > 0 && userLocation) {
+                calculatePositions();
+            }
+        }
+    });
+    
+    console.log('Compass enabled');
+}
+
+// Start compass after a short delay to ensure app is loaded
+setTimeout(setupCompass, 2000);
