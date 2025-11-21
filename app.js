@@ -477,16 +477,36 @@ function startCompass() {
 setTimeout(setupCompass, 2000);
 
 // About modal functions
-function openAboutModal() {
-    const modal = document.getElementById('aboutModal');
+async function openAboutModal() {
+    let modal = document.getElementById('aboutModal');
     if (!modal) {
         createAboutModal();
+        modal = document.getElementById('aboutModal');
     }
-    document.getElementById('aboutModal').classList.add('active');
+    
+    // Load README content
+    const modalBody = modal.querySelector('.modal-body');
+    modalBody.innerHTML = '<p style="text-align: center; color: #9e9e9e;">Loading...</p>';
+    
+    try {
+        const response = await fetch('README.md');
+        if (!response.ok) throw new Error('Failed to load README');
+        
+        const markdown = await response.text();
+        modalBody.innerHTML = convertMarkdownToHTML(markdown);
+    } catch (error) {
+        console.error('Error loading README:', error);
+        modalBody.innerHTML = '<p style="color: #ff9800;">Failed to load documentation. Please try again.</p>';
+    }
+    
+    modal.classList.add('active');
 }
 
 function closeAboutModal() {
-    document.getElementById('aboutModal').classList.remove('active');
+    const modal = document.getElementById('aboutModal');
+    if (modal) {
+        modal.classList.remove('active');
+    }
 }
 
 function createAboutModal() {
@@ -494,85 +514,60 @@ function createAboutModal() {
         <div id="aboutModal" class="modal" onclick="if(event.target === this) closeAboutModal()">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2 class="modal-title">About Starlink DTC Tracker</h2>
+                    <h2 class="modal-title">About</h2>
                     <button class="modal-close" onclick="closeAboutModal()">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>A real-time web app to track Starlink Direct-to-Cell satellites overhead. Shows which satellites are currently usable from your location with an interactive rotating compass view.</p>
-                    
-                    <h2>How to Use</h2>
-                    <p><strong>Allow location access</strong> when prompted - needed to calculate satellite positions</p>
-                    <p><strong>Enable compass</strong> (iOS only) - Tap the "Enable Compass" button when it appears</p>
-                    <p><strong>Hold phone flat</strong> - Keep it parallel to the ground for accurate compass readings</p>
-                    <p><strong>Point and look</strong> - The map rotates as you turn, showing where satellites are in real life</p>
-                    
-                    <h2>Understanding the Display</h2>
-                    
-                    <h3>Sky Map</h3>
-                    <ul>
-                        <li><strong>Center</strong> = Directly overhead (zenith)</li>
-                        <li><strong>Edge</strong> = Horizon</li>
-                        <li><strong>Compass directions</strong> (N, S, E, W) stay fixed to real directions as you turn</li>
-                        <li><strong>Numbers</strong> on map correspond to numbered satellites in the list below</li>
-                    </ul>
-                    
-                    <h3>Satellite Colors</h3>
-                    <ul>
-                        <li>🟢 <strong>Green</strong> (&gt;60° elevation) - Excellent signal, high in sky</li>
-                        <li>🟡 <strong>Yellow</strong> (30-60° elevation) - Good signal, medium height</li>
-                        <li>🟠 <strong>Orange</strong> (25-30° elevation) - Marginal signal, low on horizon</li>
-                    </ul>
-                    
-                    <h3>When No Satellites Are Visible</h3>
-                    <ul>
-                        <li>Shows next 5 upcoming passes</li>
-                        <li>Countdown timer for each (e.g., "In 12 minutes")</li>
-                        <li>Exact time of pass</li>
-                    </ul>
-                    
-                    <h2>Tips</h2>
-                    <ul>
-                        <li><strong>Fewer satellites = normal</strong> - You'll typically see 0-4 satellites at a time</li>
-                        <li><strong>Coverage gaps are expected</strong> - Sometimes you'll wait a few minutes between passes</li>
-                        <li><strong>Higher elevation = better</strong> - Satellites near center of map have best signal</li>
-                        <li><strong>Turn slowly</strong> - Give the compass a second to update as you rotate</li>
-                        <li><strong>Clear sky view needed</strong> - Satellites won't work if obstructed by buildings/trees</li>
-                    </ul>
-                    
-                    <h2>Technical Details</h2>
-                    
-                    <h3>Why only satellites above 25° elevation?</h3>
-                    <p>Starlink uses 25° as the minimum for reliable service. Below this angle, there's too much atmosphere and higher chance of obstruction. Your phone needs clearer line-of-sight than a Starlink dish.</p>
-                    
-                    <h3>How many DTC satellites are there?</h3>
-                    <p>Currently tracking ~650 Direct-to-Cell satellites in orbit. Much smaller constellation than regular Starlink (6000+ broadband satellites). That's why you see fewer overhead at any given time.</p>
-                    
-                    <h3>Update frequency</h3>
-                    <ul>
-                        <li>Satellite positions recalculated every 5 seconds</li>
-                        <li>TLE (orbital) data refreshed every 30 minutes</li>
-                        <li>Compass updates continuously as you turn your device</li>
-                    </ul>
-                    
-                    <h2>Privacy</h2>
-                    <p>Your location is only used locally in your browser. No tracking, analytics, or data collection. No account or login required. Completely free and open source.</p>
-                    
-                    <h2>About Direct-to-Cell</h2>
-                    <p>Starlink Direct-to-Cell lets your regular phone connect directly to satellites in areas without cell tower coverage. No special hardware or apps needed - your phone just works.</p>
-                    
-                    <p><strong>Currently provides:</strong> Text messaging (SMS), Location sharing</p>
-                    <p><strong>Coming 2025:</strong> Voice calls, Data connectivity</p>
-                    
-                    <p style="margin-top: 24px; padding-top: 16px; border-top: 1px solid #2c3e50; color: #9e9e9e; font-size: 12px;">
-                        Data from <a href="https://celestrak.org" target="_blank" style="color: #64b5f6;">Celestrak</a> • 
-                        Calculations by <a href="https://github.com/shashwatak/satellite-js" target="_blank" style="color: #64b5f6;">satellite.js</a>
-                    </p>
+                    <p style="text-align: center; color: #9e9e9e;">Loading...</p>
                 </div>
             </div>
         </div>
     `;
     
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Simple markdown to HTML converter
+function convertMarkdownToHTML(markdown) {
+    let html = markdown;
+    
+    // Remove title (first # heading)
+    html = html.replace(/^# .*\n/, '');
+    
+    // Convert headers
+    html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+    html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+    
+    // Convert bold
+    html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+    
+    // Convert inline code
+    html = html.replace(/`(.+?)`/g, '<code>$1</code>');
+    
+    // Convert links
+    html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" style="color: #64b5f6;">$1</a>');
+    
+    // Convert emoji bullets to actual list items
+    html = html.replace(/^- ([🛰️📍🧭📊⏰📱🌙🟢🟡🟠✅🔜].+)$/gm, '<li>$1</li>');
+    
+    // Convert regular bullets to list items
+    html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+    
+    // Wrap consecutive list items in ul tags
+    html = html.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+    
+    // Convert paragraphs (lines followed by blank line)
+    html = html.split('\n\n').map(block => {
+        // Don't wrap if already wrapped in tags
+        if (block.match(/^<[hul]/)) {
+            return block;
+        }
+        // Remove single newlines within paragraphs
+        block = block.replace(/\n/g, ' ');
+        return block.trim() ? `<p>${block.trim()}</p>` : '';
+    }).join('\n');
+    
+    return html;
 }
 
 // Close modal with Escape key
