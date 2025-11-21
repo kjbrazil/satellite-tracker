@@ -1,6 +1,6 @@
 // Starlink DTC Tracker - Main Application
 const app = document.getElementById('app');
-let location = null;
+let userLocation = null;
 let satellites = [];
 let updateInterval = null;
 let tleInterval = null;
@@ -80,7 +80,7 @@ async function fetchTLEData() {
 
 // Calculate current positions and future passes
 function calculatePositions() {
-    if (!location || satellites.length === 0) {
+    if (!userLocation || satellites.length === 0) {
         console.log('Waiting for location and satellite data...');
         return;
     }
@@ -89,9 +89,9 @@ function calculatePositions() {
     
     // Observer position in geodetic coordinates
     const observerGd = {
-        latitude: location.latitude * (Math.PI / 180),
-        longitude: location.longitude * (Math.PI / 180),
-        height: (location.altitude || 0) / 1000, // Convert to km
+        latitude: userLocation.latitude * (Math.PI / 180),
+        longitude: userLocation.longitude * (Math.PI / 180),
+        height: (userLocation.altitude || 0) / 1000, // Convert to km
     };
     
     const visible = [];
@@ -186,7 +186,7 @@ function renderApp(visibleSatellites, nextPasses) {
         <div class="container">
             <header>
                 <h1>Starlink Direct-to-Cell Tracker</h1>
-                ${location ? `<p class="location">${location.latitude.toFixed(4)}°, ${location.longitude.toFixed(4)}°</p>` : ''}
+                ${userLocation ? `<p class="location">${userLocation.latitude.toFixed(4)}°, ${userLocation.longitude.toFixed(4)}°</p>` : ''}
             </header>
             
             <main>
@@ -283,13 +283,13 @@ async function init() {
     // Request user location
     navigator.geolocation.getCurrentPosition(
         async (position) => {
-            location = {
+            userLocation = {
                 latitude: position.coords.latitude,
                 longitude: position.coords.longitude,
                 altitude: position.coords.altitude || 0,
             };
             
-            console.log('Location acquired:', location);
+            console.log('Location acquired:', userLocation);
             showLoading('Loading satellite data...', 'Location acquired');
             
             // Fetch satellite TLE data
