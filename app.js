@@ -5,7 +5,6 @@ let satellites = [];
 let updateInterval = null;
 let tleInterval = null;
 let compassHeading = 0; // Device compass heading in degrees
-let compassOffset = 0; // Manual calibration offset
 
 // Minimum elevation angle for usable satellite connection (degrees)
 // Starlink uses 25° minimum for reliable service
@@ -58,8 +57,8 @@ function renderSkyMap(visibleSatellites, heading = 0) {
     const center = size / 2;
     const radius = size / 2 - 20;
     
-    // Apply manual calibration offset
-    const adjustedHeading = (heading + compassOffset) % 360;
+    // Adjust heading to match device orientation (subtract 90 to fix North pointing)
+    const adjustedHeading = heading - 90;
     
     let svg = `
         <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width: 100%; height: auto;">
@@ -289,17 +288,10 @@ function renderApp(visibleSatellites, nextPasses) {
                 
                 <div style="text-align: center; margin-bottom: 20px;">
                     ${renderSkyMap(visibleSatellites, compassHeading)}
-                    <div style="margin-top: 10px;">
-                        <button onclick="adjustCompass(-90)" style="padding: 8px 12px; margin: 5px; background: #1a2332; border: 1px solid #2c3e50; color: #64b5f6; border-radius: 6px; font-size: 12px;">↺ 90°</button>
-                        <button onclick="adjustCompass(-45)" style="padding: 8px 12px; margin: 5px; background: #1a2332; border: 1px solid #2c3e50; color: #64b5f6; border-radius: 6px; font-size: 12px;">↺ 45°</button>
-                        <button onclick="resetCompass()" style="padding: 8px 12px; margin: 5px; background: #1a2332; border: 1px solid #2c3e50; color: #64b5f6; border-radius: 6px; font-size: 12px;">Reset</button>
-                        <button onclick="adjustCompass(45)" style="padding: 8px 12px; margin: 5px; background: #1a2332; border: 1px solid #2c3e50; color: #64b5f6; border-radius: 6px; font-size: 12px;">↻ 45°</button>
-                        <button onclick="adjustCompass(90)" style="padding: 8px 12px; margin: 5px; background: #1a2332; border: 1px solid #2c3e50; color: #64b5f6; border-radius: 6px; font-size: 12px;">↻ 90°</button>
-                    </div>
                     <p class="small-text" style="margin-top: 10px;">
                         Sky map: Center = directly overhead, Edge = horizon<br>
                         🟢 High elevation • 🟡 Medium • 🟠 Low<br>
-                        ${compassHeading !== 0 ? 'Compass enabled - use buttons above to calibrate' : 'Turn phone to enable compass'}
+                        ${compassHeading !== 0 ? 'Compass enabled - map rotates with your device' : 'Turn phone to enable compass'}
                     </p>
                 </div>
                 
@@ -486,21 +478,6 @@ function startCompass() {
 
 // Start compass after a short delay to ensure app is loaded
 setTimeout(setupCompass, 2000);
-
-// Compass calibration functions
-function adjustCompass(degrees) {
-    compassOffset = (compassOffset + degrees) % 360;
-    if (satellites.length > 0 && userLocation) {
-        calculatePositions();
-    }
-}
-
-function resetCompass() {
-    compassOffset = 0;
-    if (satellites.length > 0 && userLocation) {
-        calculatePositions();
-    }
-}
 
 // About modal functions
 async function openAboutModal() {
