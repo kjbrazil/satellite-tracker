@@ -225,6 +225,11 @@ button:active {
     .info-item {
         font-size: 13px;
     }
+    
+    svg {
+        max-width: 100% !important;
+        height: auto !important;
+    }
 }
 
 /* Dark mode support for browsers that override colors */
