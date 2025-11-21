@@ -57,13 +57,10 @@ function renderSkyMap(visibleSatellites, heading = 0) {
     const center = size / 2;
     const radius = size / 2 - 20;
     
-    // Adjust heading to match device orientation (subtract 90 to fix North pointing)
-    const adjustedHeading = heading - 90;
-    
     let svg = `
         <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width: 100%; height: auto;">
             <!-- Rotate entire map based on device heading so North points to actual north -->
-            <g transform="rotate(${-adjustedHeading} ${center} ${center})">
+            <g transform="rotate(${-heading} ${center} ${center})">
                 <!-- Background -->
                 <circle cx="${center}" cy="${center}" r="${radius}" fill="#0a0e1a" stroke="#2c3e50" stroke-width="2"/>
                 
