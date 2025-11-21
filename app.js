@@ -6,8 +6,9 @@ let updateInterval = null;
 let tleInterval = null;
 
 // Minimum elevation angle for usable satellite connection (degrees)
-// Satellites lower than this are too close to horizon for reliable service
-const MIN_ELEVATION = 10;
+// Starlink uses 25° minimum for reliable service
+// Satellites lower than this are too close to horizon for reliable phone connection
+const MIN_ELEVATION = 25;
 
 // Render HTML to the app container
 function render(html) {
@@ -349,6 +350,7 @@ function renderApp(visibleSatellites, nextPasses) {
     content += `
                 <section class="footer">
                     <p class="small-text">Tracking ${satellites.length} Starlink Direct-to-Cell satellites</p>
+                    <p class="small-text">Showing satellites above ${MIN_ELEVATION}° elevation</p>
                     <p class="small-text">Last updated: ${lastUpdate.toLocaleTimeString()}</p>
                     <button class="refresh-button" onclick="window.location.reload()">Refresh</button>
                 </section>
