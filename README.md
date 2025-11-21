@@ -1,71 +1,142 @@
 # Starlink Direct-to-Cell Tracker
 
-A real-time web app to track Starlink Direct-to-Cell satellites overhead. Shows which satellites are currently visible from your location and when the next passes will occur.
+A real-time web app to track Starlink Direct-to-Cell satellites overhead. Shows which satellites are currently usable from your location with an interactive rotating compass view.
 
 ## Features
 
-- 🛰️ Real-time tracking of Starlink satellites
-- 📍 Automatic location detection
-- 🧭 Compass directions and elevation angles
-- ⏰ Next pass predictions
-- 📱 Mobile-friendly responsive design
-- 🌙 Dark theme optimized for night viewing
-
-## Setup Instructions
-
-### Quick Start (GitHub Pages)
-
-1. **Create a new GitHub repository**
-   - Go to https://github.com/new
-   - Name it `starlink-tracker` (or whatever you prefer)
-   - Check "Add a README file"
-   - Click "Create repository"
-
-2. **Upload the files**
-   - Click "Add file" → "Upload files"
-   - Drag and drop these three files:
-     - `index.html`
-     - `style.css`
-     - `app.js`
-   - Click "Commit changes"
-
-3. **Enable GitHub Pages**
-   - Go to repository Settings
-   - Scroll down to "Pages" in the left sidebar
-   - Under "Source", select "main" branch
-   - Click "Save"
-   - Wait 1-2 minutes for deployment
-
-4. **Access your app**
-   - Your app will be live at: `https://yourusername.github.io/starlink-tracker`
-   - Bookmark this URL on your phone for easy access
+- 🛰️ **Real-time DTC tracking** - Shows only Direct-to-Cell satellites (not regular Starlink)
+- 📍 **Smart filtering** - Only displays satellites above 25° elevation (Starlink's minimum for reliable service)
+- 🧭 **Rotating compass** - Sky map rotates with your device so North points to actual north
+- 📊 **Visual sky map** - See exactly where each satellite is positioned in the sky
+- ⏰ **Next pass predictions** - When no satellites are overhead, shows upcoming passes with countdown timers
+- 📱 **Mobile optimized** - Designed for use in the field on your phone
+- 🌙 **Dark theme** - Easy on the eyes when checking satellites at night
 
 ## How to Use
 
-1. Open the app in your browser
-2. Allow location access when prompted
-3. View satellites currently overhead or see when the next pass will occur
-4. The app updates automatically every 5 seconds
+### Basic Operation
+
+1. **Allow location access** when prompted - needed to calculate satellite positions
+2. **Enable compass** (iOS only) - Tap the "Enable Compass" button when it appears
+3. **Hold phone flat** - Keep it parallel to the ground for accurate compass readings
+4. **Point and look** - The map rotates as you turn, showing where satellites are in real life
+
+### Understanding the Display
+
+**Sky Map:**
+- **Center** = Directly overhead (zenith)
+- **Edge** = Horizon
+- **Compass directions** (N, S, E, W) stay fixed to real directions as you turn
+- **Numbers** on map correspond to numbered satellites in the list below
+
+**Satellite Colors:**
+- 🟢 **Green** (>60° elevation) - Excellent signal, high in sky
+- 🟡 **Yellow** (30-60° elevation) - Good signal, medium height
+- 🟠 **Orange** (25-30° elevation) - Marginal signal, low on horizon
+
+**Satellite Details:**
+Each satellite shows:
+- **Direction** - Compass heading (e.g., "NE (45°)")
+- **Elevation** - Angle above horizon (25° minimum shown)
+- **Distance** - How far away the satellite is in km
+
+**When No Satellites Are Visible:**
+- Shows next 5 upcoming passes
+- Countdown timer for each (e.g., "In 12 minutes")
+- Exact time of pass
+
+### Tips
+
+- **Fewer satellites = normal** - You'll typically see 0-4 satellites at a time, not dozens
+- **Coverage gaps are expected** - Sometimes you'll wait a few minutes between passes
+- **Higher elevation = better** - Satellites near center of map have best signal
+- **Turn slowly** - Give the compass a second to update as you rotate
+- **Clear sky view needed** - Satellites won't work if obstructed by buildings/trees
 
 ## Technical Details
 
-- Uses [satellite.js](https://github.com/shashwatak/satellite-js) for orbital calculations
-- Fetches TLE data from [Celestrak](https://celestrak.org/)
-- Updates satellite data every 30 minutes
-- No backend required - runs entirely in the browser
+**Why only satellites above 25° elevation?**
+- Starlink uses 25° as the minimum for reliable service
+- Below this angle, too much atmosphere and higher chance of obstruction
+- Your phone needs clearer line-of-sight than a Starlink dish
 
-## Requirements
+**How many DTC satellites are there?**
+- Currently tracking ~650 Direct-to-Cell satellites in orbit
+- Much smaller constellation than regular Starlink (6000+ broadband satellites)
+- That's why you see fewer overhead at any given time
 
-- Modern web browser (Chrome, Safari, Firefox, Edge)
-- Internet connection for initial load and TLE updates
-- Location services enabled
+**Data sources:**
+- Satellite positions: [Celestrak](https://celestrak.org/) (updated every 30 minutes)
+- Orbital calculations: [satellite.js](https://github.com/shashwatak/satellite-js)
+- All processing happens in your browser - no data sent to external servers
+
+**Update frequency:**
+- Satellite positions recalculated every 5 seconds
+- TLE (orbital) data refreshed every 30 minutes
+- Compass updates continuously as you turn your device
+
+## Device Compatibility
+
+**Location Services:**
+- Required for all devices
+- Uses GPS to determine your position
+
+**Compass:**
+- **iOS 13+**: Requires permission (tap "Enable Compass" button)
+- **Android**: Works automatically
+- Desktop browsers: Sky map shows but won't rotate (no compass hardware)
+
+**Browsers:**
+- Safari (iOS/macOS)
+- Chrome (Android/Desktop)
+- Firefox (Android/Desktop)
+- Edge (Desktop)
 
 ## Privacy
 
 - Your location is only used locally in your browser
-- No data is sent to any server except Celestrak for satellite data
-- No tracking or analytics
+- No tracking, analytics, or data collection
+- No account or login required
+- Completely free and open source
 
-## License
+## Troubleshooting
 
-Free to use and modify
+**Map doesn't rotate:**
+- iOS: Make sure you tapped "Enable Compass" and granted permission
+- Hold phone flat (parallel to ground)
+- Try turning phone to different orientations
+
+**No satellites showing:**
+- This is normal - coverage has gaps
+- Check "Next Passes" section for upcoming satellites
+- Make sure you have clear view of sky
+
+**Too many satellites showing:**
+- Current filter is 25° minimum elevation
+- This matches Starlink's actual service requirements
+- Seeing 2-4 satellites is typical
+
+**App not loading:**
+- Check internet connection (needed for initial satellite data)
+- Try refreshing the page
+- Check browser console for errors
+
+## About Direct-to-Cell
+
+Starlink Direct-to-Cell lets your regular phone connect directly to satellites in areas without cell tower coverage. No special hardware or apps needed - your phone just works.
+
+Currently provides:
+- ✅ Text messaging (SMS)
+- ✅ Location sharing
+- 🔜 Voice calls (coming 2025)
+- 🔜 Data connectivity (coming 2025)
+
+Requires:
+- Compatible phone (most modern LTE phones)
+- Carrier partnership (T-Mobile, Rogers, Optus, etc.)
+- Clear view of sky
+- Being outside terrestrial coverage area
+
+---
+
+*This tracker helps you understand when and where satellites are available for connection. It's especially useful for understanding coverage patterns in remote areas.*
