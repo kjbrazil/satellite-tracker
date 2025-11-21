@@ -58,19 +58,34 @@ async function fetchTLEData() {
         const sats = [];
         
         // Parse TLE data (3 lines per satellite: name, line1, line2)
+        // Filter for Direct-to-Cell satellites only
         for (let i = 0; i < lines.length; i += 3) {
             if (i + 2 < lines.length) {
                 const name = lines[i].trim();
-                sats.push({
-                    name: name,
-                    tle1: lines[i + 1],
-                    tle2: lines[i + 2],
-                });
+                const nameLower = name.toLowerCase();
+                
+                // Filter for DTC satellites - they typically have "DTC" or "DIRECT TO CELL" in the name
+                if (nameLower.includes('dtc') || 
+                    nameLower.includes('direct to cell') || 
+                    nameLower.includes('direct-to-cell')) {
+                    sats.push({
+                        name: name,
+                        tle1: lines[i + 1],
+                        tle2: lines[i + 2],
+                    });
+                }
             }
         }
         
         satellites = sats;
-        console.log(`Loaded ${satellites.length} Starlink satellites`);
+        
+        if (satellites.length === 0) {
+            console.warn('No DTC satellites found in TLE data. The naming convention may have changed.');
+            console.log('Try checking Celestrak manually or contact support.');
+        } else {
+            console.log(`Loaded ${satellites.length} Starlink Direct-to-Cell satellites`);
+        }
+        
         return true;
     } catch (err) {
         console.error('Failed to fetch TLE data:', err);
@@ -259,7 +274,7 @@ function renderApp(visibleSatellites, nextPasses) {
     
     content += `
                 <section class="footer">
-                    <p class="small-text">Tracking ${satellites.length} Starlink satellites</p>
+                    <p class="small-text">Tracking ${satellites.length} Starlink Direct-to-Cell satellites</p>
                     <p class="small-text">Last updated: ${lastUpdate.toLocaleTimeString()}</p>
                     <button class="refresh-button" onclick="window.location.reload()">Refresh</button>
                 </section>
