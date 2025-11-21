@@ -5,6 +5,10 @@ let satellites = [];
 let updateInterval = null;
 let tleInterval = null;
 
+// Minimum elevation angle for usable satellite connection (degrees)
+// Satellites lower than this are too close to horizon for reliable service
+const MIN_ELEVATION = 10;
+
 // Render HTML to the app container
 function render(html) {
     app.innerHTML = html;
@@ -41,6 +45,67 @@ function getCompassDirection(azimuth) {
     const directions = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSW', 'SW', 'WSW', 'W', 'WNW', 'NW', 'NNW'];
     const index = Math.round(azimuth / 22.5) % 16;
     return directions[index];
+}
+
+// Render sky map visualization
+function renderSkyMap(visibleSatellites) {
+    if (visibleSatellites.length === 0) return '';
+    
+    const size = 300;
+    const center = size / 2;
+    const radius = size / 2 - 20;
+    
+    let svg = `
+        <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" style="max-width: 100%; height: auto;">
+            <!-- Background -->
+            <circle cx="${center}" cy="${center}" r="${radius}" fill="#0a0e1a" stroke="#2c3e50" stroke-width="2"/>
+            
+            <!-- Elevation rings -->
+            <circle cx="${center}" cy="${center}" r="${radius * 0.33}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
+            <circle cx="${center}" cy="${center}" r="${radius * 0.67}" fill="none" stroke="#1a2332" stroke-width="1" opacity="0.5"/>
+            
+            <!-- Compass directions -->
+            <text x="${center}" y="15" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">N</text>
+            <text x="${size - 10}" y="${center + 5}" text-anchor="end" fill="#64b5f6" font-size="14" font-weight="bold">E</text>
+            <text x="${center}" y="${size - 5}" text-anchor="middle" fill="#64b5f6" font-size="14" font-weight="bold">S</text>
+            <text x="10" y="${center + 5}" text-anchor="start" fill="#64b5f6" font-size="14" font-weight="bold">W</text>
+            
+            <!-- Center dot (zenith) -->
+            <circle cx="${center}" cy="${center}" r="3" fill="#64b5f6" opacity="0.5"/>
+    `;
+    
+    // Plot satellites
+    visibleSatellites.forEach((sat, index) => {
+        const azimuth = parseFloat(sat.azimuth);
+        const elevation = parseFloat(sat.elevation);
+        
+        // Convert to polar coordinates
+        // Elevation: 90° (zenith) = center, 0° (horizon) = edge
+        const elevationRadius = radius * (1 - (elevation / 90));
+        
+        // Azimuth: 0° = North (top), increases clockwise
+        const azimuthRad = (azimuth - 90) * (Math.PI / 180);
+        
+        const x = center + elevationRadius * Math.cos(azimuthRad);
+        const y = center + elevationRadius * Math.sin(azimuthRad);
+        
+        // Color based on elevation (green = high, yellow = medium, red = low)
+        let color;
+        if (elevation > 60) color = '#4caf50';
+        else if (elevation > 30) color = '#ffc107';
+        else color = '#ff9800';
+        
+        svg += `
+            <circle cx="${x}" cy="${y}" r="6" fill="${color}" opacity="0.8" stroke="#fff" stroke-width="1">
+                <title>${sat.name}\n${sat.elevation}° elevation\n${getCompassDirection(azimuth)} (${sat.azimuth}°)</title>
+            </circle>
+            <text x="${x}" y="${y - 10}" text-anchor="middle" fill="#e0e0e0" font-size="10" opacity="0.7">${index + 1}</text>
+        `;
+    });
+    
+    svg += '</svg>';
+    
+    return svg;
 }
 
 // Fetch TLE (Two-Line Element) data for Starlink satellites
@@ -127,8 +192,8 @@ function calculatePositions() {
                 const azimuth = lookAngles.azimuth * (180 / Math.PI);
                 const elevation = lookAngles.elevation * (180 / Math.PI);
                 
-                // If satellite is above horizon (elevation > 0)
-                if (elevation > 0) {
+                // If satellite is above minimum elevation (usable for connection)
+                if (elevation > MIN_ELEVATION) {
                     visible.push({
                         name: sat.name,
                         azimuth: azimuth.toFixed(1),
@@ -167,8 +232,8 @@ function calculatePositions() {
                         const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
                         const elevation = lookAngles.elevation * (180 / Math.PI);
                         
-                        // Found a pass for this satellite
-                        if (elevation > 0 && !upcoming.find(p => p.name === sat.name)) {
+                        // Found a pass for this satellite (above minimum elevation)
+                        if (elevation > MIN_ELEVATION && !upcoming.find(p => p.name === sat.name)) {
                             upcoming.push({
                                 name: sat.name,
                                 time: futureTime,
@@ -211,13 +276,22 @@ function renderApp(visibleSatellites, nextPasses) {
         content += `
             <section class="section">
                 <h2 class="section-title">Currently Overhead (${visibleSatellites.length})</h2>
+                
+                <div style="text-align: center; margin-bottom: 20px;">
+                    ${renderSkyMap(visibleSatellites)}
+                    <p class="small-text" style="margin-top: 10px;">
+                        Sky map: Center = directly overhead, Edge = horizon<br>
+                        🟢 High elevation • 🟡 Medium • 🟠 Low
+                    </p>
+                </div>
+                
                 <div class="satellite-list">
         `;
         
-        visibleSatellites.forEach(sat => {
+        visibleSatellites.forEach((sat, index) => {
             content += `
                 <div class="satellite-card">
-                    <div class="satellite-name">${sat.name}</div>
+                    <div class="satellite-name">${index + 1}. ${sat.name}</div>
                     <div class="satellite-info">
                         <div class="info-item">
                             <span class="label">Direction:</span>
